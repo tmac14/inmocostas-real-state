@@ -1,0 +1,51 @@
+{# @var ea \EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext #}
+
+{% block photogallery_form_row %}
+    {{ block('form_row') }}
+{% endblock %}
+
+{% block photogallery_form_label %}{% endblock %}
+
+{% block photogallery_form_widget %}
+    {% set url = ea_url()
+        .setController('App\\Controller\\Admin\\PropertyCrudController')
+        .setAction('uploadPhoto') %}
+    <div class="row">
+        <div class="col">
+        </div>
+        <div class="col-lg-3">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#photogalleryModal">
+                Upload Files
+            </button>
+        </div>
+    </div>
+    <!-- Modal -->
+    <div class="modal" id="photogalleryModal" tabindex="-1" aria-labelledby="photogalleryLabel" aria-hidden="true"
+            {{ stimulus_controller('photogallery', {
+                uploadUrl: path('upload_temp_files')
+            }) }}
+    >
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="photogalleryModalLabel">PhotoGallery &boxh; <small>Upload your property photos</small></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="photogallery-container d-flex flex-row">
+                        <div class="photogallery-upload flex-column p-2 col-3">
+                            <input type="file"
+                                   name="photos"
+                                   data-photogallery-target="filepond"
+                                   data-allow-reorder="true"
+                                   multiple/>
+                        </div>
+                        <div class="photogallery-upload-preview col-9 flex-column justify-content-center align-content-center">
+                            <p class="help-message">You can select an Image for edition and it will display here.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

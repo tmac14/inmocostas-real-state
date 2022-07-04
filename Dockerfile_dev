@@ -1,0 +1,69 @@
+FROM composer:latest AS composer
+FROM php:8.1.0-fpm
+
+# Let's use bash as a default shell with login each time
+SHELL ["/bin/bash", "--login", "-c"]
+
+# Declare used arguments from `docker-compose.yml` file
+ARG HOST_UID
+ARG HOST_GID
+
+# Update package list and install necessary libraries
+RUN apt-get update && apt-get install -y \
+    zlib1g-dev libzip-dev libxml2-dev libicu-dev g++ nano git unzip jq \
+    apt-utils bash-completion iproute2 sudo libgconf-2-4 gnupg2 libpq-dev
+
+# Enable all necessary PHP packages
+RUN docker-php-ext-install -j$(nproc) zip \
+    && docker-php-ext-configure intl \
+    && docker-php-ext-install intl \
+    && docker-php-ext-install -j$(nproc) opcache \
+    && docker-php-ext-install -j$(nproc) pgsql \
+    && docker-php-ext-install -j$(nproc) pdo_pgsql \
+    && pecl install xdebug-3.1.3 \
+    && docker-php-ext-enable xdebug
+
+# Install APCu (APC backward compatibility dropped in PHP 8)
+RUN pecl install apcu \
+    && docker-php-ext-enable apcu --ini-name 10-docker-php-ext-apcu.ini
+
+# Copy the Composer PHAR from the Composer image into the PHP image
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+
+# Copy development `php.ini` configuration to container
+COPY ./docker/php/php-dev.ini /usr/local/etc/php/php.ini
+
+# Define used work directory
+WORKDIR /app
+
+# Add everything app sources inside docker image
+COPY . .
+
+# Ensure that all required files has execute rights
+RUN chmod +x /app/docker-entrypoint-dev.sh \
+    && chmod +x /usr/bin/composer
+
+RUN chmod -R o+s+w /usr/local/etc/php
+
+RUN groupadd --gid ${HOST_GID} dev \
+    && useradd --password dev --uid ${HOST_UID} --gid ${HOST_GID} --shell /bin/bash --create-home dev \
+    && usermod -a -G www-data,sudo dev \
+    && chgrp -hR dev /app
+
+USER dev
+
+ENV PATH "$PATH:/home/dev/.composer/vendor/bin:/app/vendor/bin:/app/bin"
+
+# Install following common tools;
+#   - bamarni/symfony-console-autocomplete, to get application commands and
+#     composer autocomplete working
+RUN composer --no-cache global require \
+    bamarni/symfony-console-autocomplete
+
+# Add necessary stuff to bash autocomplete
+RUN echo 'source /usr/share/bash-completion/bash_completion' >> /home/dev/.bashrc \
+    && echo 'eval "$(symfony-autocomplete --shell bash)"' >> /home/dev/.bashrc
+
+EXPOSE 9000
+
+ENTRYPOINT ["/app/docker-entrypoint-dev.sh"]
