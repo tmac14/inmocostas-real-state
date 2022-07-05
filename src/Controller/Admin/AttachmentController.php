@@ -11,6 +11,11 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\String\Slugger\SluggerInterface;
 
+#[Route(
+    '/attachment/tmp/upload',
+    name: 'upload_temp_files',
+    methods: ['POST'],
+)]
 class AttachmentController extends AbstractController
 {
     public function __construct(
@@ -20,9 +25,11 @@ class AttachmentController extends AbstractController
     ) {
     }
 
-    #[Route('/attachment/tmp/upload', name: 'upload_temp_files', methods: ['POST'])]
-    public function uploadAsTemporary(Request $request): JsonResponse
+    public function __invoke(Request $request): JsonResponse
     {
+        // Check your profiler
+        dump($this->tempFilesFolder, $this->slugger, $this->em);
+
         $file = $request->files->get('photos');
         $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $safeFilename = $this->slugger->slug($originalFilename);
